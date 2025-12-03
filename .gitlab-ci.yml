@@ -1,56 +1,54 @@
 stages:
-  - deploy
+  - deploy-dev
+  - deploy-prod
 
-variables:
-  REMOTE_SERVER: "192.168.120.199"
-  REMOTE_PATH: "/Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src"
-  REMOTE_USER: "devops"
-  WEB_USER: "apache"
-
-# Despliegue desarrollo
-deploy_develop:
-  stage: deploy
-  only:
-    - develop
+# ================================
+# DESPLIEGUE DESARROLLO
+# ================================
+deploy_development:
+  stage: deploy-dev
+  tags:
+    - runner
   script:
     - echo 'Preparando permisos en la location del proyecto para el despliegue del entorno de desarrollo'
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} sudo chown -R ${REMOTE_USER}:${WEB_USER} ${REMOTE_PATH}
+    - ssh devops@192.168.120.199 sudo chown -R devops:apache /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src
+    
     - echo 'Copiando archivos del proyecto para su configuración y despliegue'
-    - rsync -avz --exclude='.git' --exclude='node_modules' --exclude='vendor' * .[^.]* ${REMOTE_USER}@${REMOTE_SERVER}:${REMOTE_PATH}
+    - rsync -avz * .[^.]* devops@192.168.120.199:/Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src
+    
     - echo 'Instalación de dependencias del proyecto'
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} "cd ${REMOTE_PATH} && php composer.phar install && php artisan cache:clear"
+    - ssh devops@192.168.120.199 "cd /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src && php composer.phar install && php artisan cache:clear"
+    
     - echo 'Estableciendo permisos en archivos y folders del proyecto'
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} "sudo find ${REMOTE_PATH} -type f -exec chmod 664 {} \\;"
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} "sudo find ${REMOTE_PATH} -type d -exec chmod 775 {} \\;"
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} sudo chown -R ${WEB_USER}:${WEB_USER} ${REMOTE_PATH}
-    - echo 'Despliegue en desarrollo completado exitosamente'
-  environment:
-    name: development
-    url: http://${REMOTE_SERVER}
+    - ssh devops@192.168.120.199 "sudo find /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src -type f -exec chmod 664 {} \\;"
+    - ssh devops@192.168.120.199 "sudo find /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src -type d -exec chmod 775 {} \\;"
+    - ssh devops@192.168.120.199 sudo chown -R apache:apache /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+# ================================
+# DESPLIEGUE PRODUCCIÓN
+# ================================
+deploy_production:
+  stage: deploy-prod
   tags:
     - runner
-  when: manual
-
-# Despliegue producción
-deploy_production:
-  stage: deploy
-  only:
-    - main
   script:
     - echo 'Preparando permisos en la location del proyecto para el despliegue del entorno de producción'
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} sudo chown -R ${REMOTE_USER}:${WEB_USER} ${REMOTE_PATH}
+    - ssh devops@192.168.120.199 sudo chown -R devops:apache /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src
+    
     - echo 'Copiando archivos del proyecto para su instalación, configuración y despliegue'
-    - rsync -avz --exclude='.git' --exclude='node_modules' --exclude='vendor' * .[^.]* ${REMOTE_USER}@${REMOTE_SERVER}:${REMOTE_PATH}
+    - rsync -avz * .[^.]* devops@192.168.120.199:/Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src
+    
+    - echo 'Limpieza en locación del proyecto para una instalación limpia'
+    - ssh devops@192.168.120.199 "cd /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src && rm -rf vendor && rm composer.lock"
+    
     - echo 'Instalación de dependencias del proyecto'
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} "cd ${REMOTE_PATH} && php composer.phar install && php artisan cache:clear"
+    - ssh devops@192.168.120.199 "cd /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src && php composer.phar install && php artisan config:clear && php artisan cache:clear"
+    
     - echo 'Estableciendo permisos y privilegios en archivos y folders del proyecto'
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} "sudo find ${REMOTE_PATH} -type f -exec chmod 664 {} \\;"
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} "sudo find ${REMOTE_PATH} -type d -exec chmod 775 {} \\;"
-    - ssh ${REMOTE_USER}@${REMOTE_SERVER} sudo chown -R ${WEB_USER}:${WEB_USER} ${REMOTE_PATH}
-    - echo 'Despliegue en producción completado exitosamente'
-  environment:
-    name: production
-    url: http://${REMOTE_SERVER}
-  tags:
-    - runner
-  when: manual
+    - ssh devops@192.168.120.199 "sudo find /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src -type f -exec chmod 664 {} \\;"
+    - ssh devops@192.168.120.199 "sudo find /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src -type d -exec chmod 775 {} \\;"
+    - ssh devops@192.168.120.199 "sudo chown -R apache:apache /Data/vhost/fia-dev-apps.tpp/httpdocs/gpp/backs/gpp-back/src/"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
