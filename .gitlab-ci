@@ -28,7 +28,7 @@ deploy_develop:
     name: development
     url: http://${REMOTE_SERVER}
   tags:
-    - local-runner
+    - runner
   when: manual
 
 # Despliegue producción
@@ -52,5 +52,5 @@ deploy_production:
     name: production
     url: http://${REMOTE_SERVER}
   tags:
-    - local-runner
+    - runner
   when: manual
